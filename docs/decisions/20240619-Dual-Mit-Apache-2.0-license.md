@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed
+Accepted
+
+## Approvers
+
+Raven-bit
+Blade2005
 
 ## Context
 
