@@ -27,5 +27,8 @@ go.work.sum
 # tags file
 
 /tags
+/bin
 tags.lock
 tags.temp
+
+coverage.txt
