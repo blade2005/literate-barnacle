@@ -1,4 +1,4 @@
-.PHONY: check
+.PHONY: check view-coverage
 
 GOFILES := $(shell find ./internal ./cmd -name '*.go')
 
@@ -15,3 +15,6 @@ check:
 	go vet ./...
 	staticcheck ./...
 	go test ./... -race -covermode=atomic -coverprofile=coverage.txt -shuffle on
+
+view-coverage:
+	go tool cover -html=coverage.txt
