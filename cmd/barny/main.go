@@ -9,44 +9,76 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/blade2005/literate-barnacle/internal/server"
+	service "github.com/blade2005/literate-barnacle/internal/service"
 )
 
+// Main should be so simple that it cannot have bugs, as it will generally be a
+// function that is never run by tests.
 func main() {
-	s := server.NewServer()
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	// signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-	httpServer := &http.Server{
-		Handler: s.Handler(),
-		Addr:    ":8080",
+	service := service.NewService(service.Addr(":8080"))
+
+	server := &http.Server{
+		Handler: service.Handler(),
+		Addr:    *service.Addr(),
 	}
 
-	wg := &sync.WaitGroup{}
+	run(ctx, server, service)
+}
 
-	wg.Add(2)
+type serverI interface {
+	ListenAndServe() error
+	Shutdown(ctx context.Context) error
+}
+
+func run(
+	ctx context.Context,
+	server serverI,
+	service *service.Service) {
+
+	service.AddRoute("/", hello)
+	service.AddRoute("/bye", goodbye)
+
+	service.Logger().Info("server starting")
+	serverErrors := make(chan error)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		s.Logger().Info("server started")
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.Logger().Error(err.Error())
-		}
+		serverErrors <- server.ListenAndServe()
 	}()
 
-	go func() {
-		defer wg.Done()
-		<-done // Block on os signals
-		s.Logger().Info("server stopping")
+	// This may seem a bit awkward, but imagine the case where `barny` runs
+	// multiple ... what's smaller than a micro? But yeah, multiple servers
+	// binding multiple ports.
+	select {
+	case err := <-serverErrors:
+		if err != nil && err != http.ErrServerClosed {
+			service.Logger().Error(err.Error())
+		}
+	case <-ctx.Done():
+		service.Logger().Info("server stopping")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := httpServer.Shutdown(ctx); err != nil {
-			s.Logger().Error(err.Error())
+		if err := server.Shutdown(ctx); err != nil {
+			service.Logger().Error(err.Error())
 		}
-	}()
 
-	wg.Wait()
-	s.Logger().Info("Server shutdown complete. Exitting.")
+		wg.Done()
+		service.Logger().Info("Server shutdown complete. Exitting.")
+	}
+}
 
+func hello(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hello"))
+}
+
+func goodbye(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("goodbye"))
 }
