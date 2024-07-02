@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -9,41 +10,34 @@ import (
 	"syscall"
 	"time"
 
-	service "github.com/blade2005/literate-barnacle/internal/service"
+	"github.com/blade2005/literate-barnacle/internal/site"
 )
 
 // Main should be so simple that it cannot have bugs, as it will generally be a
 // function that is never run by tests.
 func main() {
-
-	// signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	service := service.NewService(service.Addr(":8080"))
-
-	server := &http.Server{
-		Handler: service.Handler(),
-		Addr:    *service.Addr(),
-	}
-
-	run(ctx, server, service)
+	run(ctx, site.NewSite())
 }
 
 type serverI interface {
 	ListenAndServe() error
 	Shutdown(ctx context.Context) error
+	Logger() *slog.Logger
+	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+	Handle(pattern string, handler http.Handler)
 }
 
 func run(
 	ctx context.Context,
-	server serverI,
-	service *service.Service) {
+	server serverI) {
 
-	service.AddRoute("/", hello)
-	service.AddRoute("/bye", goodbye)
+	server.HandleFunc("/", hello)
+	server.HandleFunc("/bye", goodbye)
 
-	service.Logger().Info("server starting")
+	server.Logger().Info("server starting")
 	serverErrors := make(chan error)
 
 	wg := sync.WaitGroup{}
@@ -59,19 +53,18 @@ func run(
 	select {
 	case err := <-serverErrors:
 		if err != nil && err != http.ErrServerClosed {
-			service.Logger().Error(err.Error())
+			server.Logger().Error(err.Error())
 		}
 	case <-ctx.Done():
-		service.Logger().Info("server stopping")
+		server.Logger().Info("server stopping")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
-			service.Logger().Error(err.Error())
+			server.Logger().Error(err.Error())
 		}
 
-		wg.Done()
-		service.Logger().Info("Server shutdown complete. Exitting.")
+		server.Logger().Info("Server shutdown complete. Exitting.")
 	}
 }
 

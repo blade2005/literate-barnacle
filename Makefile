@@ -1,4 +1,4 @@
-.PHONY: check view-coverage
+.PHONY: check view-coverage fuzz
 
 GOFILES := $(shell find ./internal ./cmd -name '*.go')
 
@@ -15,6 +15,10 @@ check:
 	go vet ./...
 	staticcheck ./...
 	go test ./... -race -covermode=atomic -coverprofile=coverage.txt -shuffle on
+	go test ./internal/site -fuzz=FuzzSite -fuzztime=10s
 
 view-coverage:
 	go tool cover -html=coverage.txt
+
+fuzz:
+	go test ./internal/site -fuzz=FuzzSite

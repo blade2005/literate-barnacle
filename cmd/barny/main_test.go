@@ -12,24 +12,9 @@ import (
 	"testing"
 	"time"
 
-	service "github.com/blade2005/literate-barnacle/internal/service"
+	"github.com/blade2005/literate-barnacle/internal/site"
 	"github.com/stretchr/testify/assert"
 )
-
-type testServer struct {
-	server   *http.Server
-	listener net.Listener
-	Handler  http.Handler
-	Addr     string
-}
-
-func (s *testServer) ListenAndServe() error {
-	return s.server.Serve(s.listener)
-}
-
-func (s *testServer) Shutdown(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
-}
 
 func TestRun(t *testing.T) {
 	wg := sync.WaitGroup{}
@@ -39,22 +24,16 @@ func TestRun(t *testing.T) {
 		t.FailNow()
 	}
 
-	service := service.NewService()
-	server := &http.Server{
-		Handler: service.Handler(),
-	}
-
-	testServer := &testServer{
-		server:   server,
-		listener: listener,
-	}
+	server := site.NewSite(
+		site.Listener(listener),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	defer cancel()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		run(ctx, testServer, service)
+		run(ctx, server)
 	}()
 
 	t.Parallel() // all tests will run in parallel
@@ -107,21 +86,16 @@ func TestRunShutdown(t *testing.T) {
 
 	var output bytes.Buffer
 
-	service := service.NewService(service.Stdout(&output))
-	server := &http.Server{
-		Handler: service.Handler(),
-	}
-
-	testServer := &testServer{
-		server:   server,
-		listener: listener,
-	}
+	server := site.NewSite(
+		site.Stdout(&output),
+		site.Listener(listener),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Millisecond)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		run(ctx, testServer, service)
+		run(ctx, server)
 	}()
 	cancel()
 	wg.Wait()
