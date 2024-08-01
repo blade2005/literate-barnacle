@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+//lint:ignore U1000 stub.
 type Breed struct {
 	id          string
 	name        string
@@ -14,8 +15,9 @@ type Breed struct {
 	breed_group string
 }
 
+//lint:ignore U1000 stub.
 type Image struct {
-	id         string
+	id         string `json:"id"`
 	url        string
 	width      int
 	height     int
@@ -57,7 +59,7 @@ type GetImagesSearchParams struct {
 	XApiKey *string `json:"x-api-key,omitempty"`
 }
 
-func (c *Client) GetImagesSearch(options *GetImagesSearchParams) (*ImagesList, error) {
+func (c *Client) GetImagesSearch(options *GetImagesSearchParams) (*[]Image, error) {
 	search_url := fmt.Sprintf("%s/images/search", c.BaseURL)
 	// TODO: setup support for params
 	// My idea here is to take options and create url.Values() from it and associate it with the parsed url
@@ -72,7 +74,7 @@ func (c *Client) GetImagesSearch(options *GetImagesSearchParams) (*ImagesList, e
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	res := ImagesList{}
+	var res []Image
 	if err := c.sendRequest(req, &res); err != nil {
 		return nil, err
 	}

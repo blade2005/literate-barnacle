@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -17,10 +18,11 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-type successResponse struct {
-	Code int         `json:"code"`
-	Data interface{} `json:"data"`
-}
+// type successResponse struct {
+// 	Code int         `json:"code"`
+// 	Data interface{} `json:"data"`
+// }
+
 type Client struct {
 	BaseURL    string
 	apiKey     string
@@ -38,9 +40,10 @@ func NewClient(apiKey string) *Client {
 
 }
 
-func (c *Client) sendRequest(req *http.Request, v interface{}) error {
+func (c *Client) sendRequest(req *http.Request, v *[]Image) error {
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("x-api-key", c.apiKey)
+	var err error = nil
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -60,13 +63,24 @@ func (c *Client) sendRequest(req *http.Request, v interface{}) error {
 	}
 
 	// Unmarshall and populate v
-	fullResponse := successResponse{
-		Data: v,
-	}
+	// fullResponse := new(successResponse)
 
-	if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
 		return err
 	}
 
-	return nil
+	fmt.Printf("body: %s\n", body)
+
+	// fullResponse := successResponse{
+	// 	Data: v,
+	// }
+
+	// if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
+	// 	return err
+	// }
+
+	err = json.Unmarshal(body, &v)
+
+	return err
 }
