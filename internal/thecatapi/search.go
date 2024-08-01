@@ -1,18 +1,20 @@
 package thecatapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 //lint:ignore U1000 stub.
 type Breed struct {
-	id          string
-	name        string
-	weight      string
-	height      string
-	life_span   string
-	breed_group string
+	Id         string
+	Name       string
+	Weight     string
+	Height     string
+	LifeSpan   string
+	BreedGroup string
 }
 
 //lint:ignore U1000 stub.
@@ -59,24 +61,30 @@ type GetImagesSearchParams struct {
 	XApiKey *string `json:"x-api-key,omitempty"`
 }
 
-func (c *Client) GetImagesSearch(options *GetImagesSearchParams) (*[]Image, error) {
+func (c *Client) GetImagesSearch(options *GetImagesSearchParams) ([]Image, error) {
 	search_url := fmt.Sprintf("%s/images/search", c.BaseURL)
-	// TODO: setup support for params
-	// My idea here is to take options and create url.Values() from it and associate it with the parsed url
-	// u, err := url.Parse(search_url)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	u, err := url.Parse(search_url)
+	if err != nil {
+		return nil, err
+	}
 
-	req, err := http.NewRequest("GET", search_url, nil)
+	// TODO: Add support for adding the options to the parsed url as Query Params, possibly via u.Query()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	var res []Image
-	if err := c.sendRequest(req, &res); err != nil {
+	body, err := c.sendRequest(req)
+
+	if err != nil {
 		return nil, err
 	}
-	return &res, nil
+
+	var res []Image
+
+	err = json.Unmarshal(body, &res)
+
+	return res, err
 }

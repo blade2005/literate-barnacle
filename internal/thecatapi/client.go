@@ -35,14 +35,15 @@ func NewClient(apiKey string) *Client {
 
 }
 
-func (c *Client) sendRequest(req *http.Request, v *[]Image) error {
+func (c *Client) sendRequest(req *http.Request) ([]byte, error) {
 	req.Header.Set("Accept", "application/json; charset=utf-8")
 	req.Header.Set("x-api-key", c.apiKey)
 	var err error = nil
+	var body []byte = []byte{}
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		return body, err
 	}
 
 	defer res.Body.Close()
@@ -51,18 +52,13 @@ func (c *Client) sendRequest(req *http.Request, v *[]Image) error {
 	if res.StatusCode != http.StatusOK {
 		var errRes errorResponse
 		if err = json.NewDecoder(res.Body).Decode(&errRes); err == nil {
-			return errors.New(errRes.Message)
+			return body, errors.New(errRes.Message)
 		}
 
-		return fmt.Errorf("unknown error, status code: %d", res.StatusCode)
+		return body, fmt.Errorf("unknown error, status code: %d", res.StatusCode)
 	}
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
+	body, err = io.ReadAll(res.Body)
 
-	err = json.Unmarshal(body, &v)
-
-	return err
+	return body, err
 }
