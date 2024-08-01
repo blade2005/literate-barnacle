@@ -17,13 +17,13 @@ type Breed struct {
 
 //lint:ignore U1000 stub.
 type Image struct {
-	id         string `json:"id"`
-	url        string
-	width      int
-	height     int
-	mime_type  string
-	breeds     []Breed
-	categories []string
+	Id         string
+	Url        string
+	Width      int
+	Height     int
+	MimeType   string
+	Breeds     []Breed
+	Categories []string
 }
 
 type ImagesList struct {

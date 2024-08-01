@@ -18,11 +18,6 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-// type successResponse struct {
-// 	Code int         `json:"code"`
-// 	Data interface{} `json:"data"`
-// }
-
 type Client struct {
 	BaseURL    string
 	apiKey     string
@@ -62,23 +57,10 @@ func (c *Client) sendRequest(req *http.Request, v *[]Image) error {
 		return fmt.Errorf("unknown error, status code: %d", res.StatusCode)
 	}
 
-	// Unmarshall and populate v
-	// fullResponse := new(successResponse)
-
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("body: %s\n", body)
-
-	// fullResponse := successResponse{
-	// 	Data: v,
-	// }
-
-	// if err = json.NewDecoder(res.Body).Decode(&fullResponse); err != nil {
-	// 	return err
-	// }
 
 	err = json.Unmarshal(body, &v)
 
